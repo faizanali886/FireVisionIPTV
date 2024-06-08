@@ -12,7 +12,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Check if pubspec.yaml exists
+    - name: Check if pubspec.yaml exists and contains Flutter
       id: check_flutter
       run: |
         if [ -f "pubspec.yaml" ]; then
@@ -23,7 +23,7 @@ jobs:
           fi
         else
           echo "flutter_project=false" >> $GITHUB_ENV
-        fi
+      shell: bash
 
     - name: Set up Flutter
       if: env.flutter_project == 'true'
