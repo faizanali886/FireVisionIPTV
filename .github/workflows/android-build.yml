@@ -23,7 +23,7 @@ jobs:
           fi
         else
           echo "flutter_project=false" >> $GITHUB_ENV
-      shell: /usr/bin/bash --noprofile --norc -e -o pipefail
+      shell: bash
 
     - name: Set up Flutter
       if: env.flutter_project == 'true'
