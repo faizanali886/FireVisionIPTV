@@ -1,4 +1,4 @@
-name: Java 17 APK Build and Release
+name: Java 17 APK Build and Release 
 
 on:
   push:
