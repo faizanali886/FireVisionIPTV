@@ -1,47 +1,105 @@
-name: Flutter Build Workflow
+name: FireVisionIPTV - Flutter Android Build and Release
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  repository_dispatch:
-    types: [deploy-application]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      - name: Install and set up Java
-        run: |
-          curl -s "https://get.sdkman.io" | bash
-          source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk install java 17.0.10-zulu
-          sdk default java 17.0.10-zulu
+    - name: Check if pubspec.yaml exists
+      id: check_flutter
+      run: |
+        if [ -f "pubspec.yaml" ]; then
+          if grep -q "flutter:" "pubspec.yaml"; then
+            echo "flutter_project=true" >> $GITHUB_ENV
+          else
+            echo "flutter_project=false" >> $GITHUB_ENV
+          fi
+        else
+          echo "flutter_project=false" >> $GITHUB_ENV
+        fi
 
-      - name: Install Flutter
-        run: |
-          wget https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.7.12-stable.tar.xz
-          tar xf flutter_linux_3.7.12-stable.tar.xz -C $HOME
-          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+    - name: Set up Flutter
+      if: env.flutter_project == 'true'
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.7.12' # Specify your required Flutter version
 
-      - name: Check Flutter Version and Doctor Output
-        run: |
-          flutter --version
-          flutter doctor
-          flutter pub get
+    - name: Install dependencies
+      if: env.flutter_project == 'true'
+      run: flutter pub get
 
-      - name: Build APK
-        run: flutter build apk
+    - name: Build release APK
+      if: env.flutter_project == 'true'
+      run: flutter build apk --release
 
-      - name: Archive APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: apk
-          path: build/app/outputs/flutter-apk/*.apk
+    - name: Debug APK file path
+      if: env.flutter_project == 'true'
+      run: ls -R build/app/outputs/flutter-apk
 
-     
+    - name: Upload APK as artifact
+      if: env.flutter_project == 'true'
+      uses: actions/upload-artifact@v2
+      with:
+        name: app-release.apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+        
+    - name: Get app version
+      id: app_version
+      if: env.flutter_project == 'true'
+      run: |
+        version=$(grep 'version: ' pubspec.yaml | head -1 | awk '{print $2}')
+        echo "version=$version" >> $GITHUB_ENV
+        echo "VERSION: $version"
+        
+    - name: Check if Release Exists
+      id: check_release
+      if: env.flutter_project == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        response=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" https://api.github.com/repos/${{ github.repository }}/releases/tags/v${{ env.version }})
+        release_id=$(echo $response | jq -r '.id')
+        if [ "$release_id" == "null" ]; then
+          echo "release_exists=false" >> $GITHUB_ENV
+        else
+          echo "release_exists=true" >> $GITHUB_ENV
+          echo "release_id=$release_id" >> $GITHUB_ENV
+        fi
+
+    - name: Create or Update Release
+      id: create_or_update_release
+      if: env.flutter_project == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_EXISTS: ${{ env.release_exists }}
+        RELEASE_ID: ${{ env.release_id }}
+      run: |
+        if [ "$RELEASE_EXISTS" == "false" ]; then
+          response=$(curl -X POST -H "Authorization: Bearer $GITHUB_TOKEN" -H "Content-Type: application/json" -d "{\"tag_name\":\"v${{ env.version }}\",\"name\":\"Release v${{ env.version }}\",\"draft\":false,\"prerelease\":false}" https://api.github.com/repos/${{ github.repository }}/releases)
+          release_id=$(echo $response | jq -r '.id')
+          echo "release_id=$release_id" >> $GITHUB_ENV
+        else
+          echo "Release already exists with ID $RELEASE_ID"
+        fi
+        
+    - name: Upload Release Asset
+      if: env.flutter_project == 'true'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_ID: ${{ env.release_id }}
+      run: |
+        upload_url="https://uploads.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets?name=FireVisionIPTV-v${{ env.version }}.apk"
+        asset_path=./build/app/outputs/flutter-apk/app-release.apk
+        
+        curl -X POST \
+          -H "Authorization: Bearer $GITHUB_TOKEN" \
+          -H "Content-Type: application/vnd.android.package-archive" \
+          --data-binary "@$asset_path" \
+          "$upload_url"
