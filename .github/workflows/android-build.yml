@@ -23,7 +23,7 @@ jobs:
           fi
         else
           echo "flutter_project=false" >> $GITHUB_ENV
-      shell: bash
+      shell: /usr/bin/bash --noprofile --norc -e -o pipefail
 
     - name: Set up Flutter
       if: env.flutter_project == 'true'
@@ -71,8 +71,7 @@ jobs:
         else
           echo "release_exists=true" >> $GITHUB_ENV
           echo "release_id=$release_id" >> $GITHUB_ENV
-        fi
-
+          
     - name: Create or Update Release
       id: create_or_update_release
       if: env.flutter_project == 'true'
@@ -87,8 +86,7 @@ jobs:
           echo "release_id=$release_id" >> $GITHUB_ENV
         else
           echo "Release already exists with ID $RELEASE_ID"
-        fi
-        
+          
     - name: Upload Release Asset
       if: env.flutter_project == 'true'
       env:
