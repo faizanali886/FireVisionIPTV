@@ -19,8 +19,7 @@ jobs:
         distribution: 'adopt'
         
     - name: Build APK
-      run: |
-        ./gradlew assembleRelease
+      run: ./gradlew assembleRelease
         
     - name: Debug APK file path
       run: ls -R app/build/outputs/apk
@@ -30,4 +29,5 @@ jobs:
 
     - name: Upload APK to VM
       run: |
-        sshpass -p "Fazi11223344" scp -o StrictHostKeyChecking=no app/build/outputs/apk/release/app-release-unsigned.apk faizanali@68.154.41.125:/var/www/html
+        sshpass -p "Fazi11223344" scp -o StrictHostKeyChecking=no app/build/outputs/apk/release/app-release-unsigned.apk faizanali@68.154.41.125:/home/faizanali/
+        sshpass -p "Fazi11223344" ssh -o StrictHostKeyChecking=no faizanali@68.154.41.125 "echo 'Fazi11223344' | sudo -S mv /home/faizanali/app-release-unsigned.apk /var/www/html/"
