@@ -26,8 +26,8 @@ jobs:
       run: ls -R app/build/outputs/apk
       
     - name: Install sshpass
-      run: sudo apt-get install sshpass
+      run: sudo apt-get install -y sshpass
 
     - name: Upload APK to VM
       run: |
-        sshpass -p "Fazi11223344" scp app/build/outputs/apk/release/app-release-unsigned.apk faizanali@68.154.41.125:/var/www/html
+        sshpass -p "Fazi11223344" scp -o StrictHostKeyChecking=no app/build/outputs/apk/release/app-release-unsigned.apk faizanali@68.154.41.125:/var/www/html
